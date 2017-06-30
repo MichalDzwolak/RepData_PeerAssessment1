@@ -1,0 +1,122 @@
+---
+title: "Assignment 1"
+author: "Michal Dzwolak"
+date: "29 June 2017"
+output: html_document
+---
+
+
+###What is mean total number of steps taken per day?
+
+Table with sum, mean and median of steps taken per day.
+
+```{r pressure, echo=TRUE, message=FALSE, warning=FALSE}
+library(dplyr)
+library(ggplot2)
+library(knitr)
+
+up <- read.csv('activity.csv')
+
+up1 <- up %>% select(steps, date) %>% group_by(date) %>% summarise(Mean=round(mean(steps),2), Sum=sum(steps), Median=median(steps))
+
+pl <- ggplot(up, aes(x=up$date, y=up$steps)) + geom_bar(stat = 'identity') + 
+  theme(axis.text.x=element_text(angle=90, hjust=1)) + ylab('Sum of steps taken') + xlab('Date')
+
+kable(up1, format = 'html')
+
+print(pl)
+
+```
+
+
+
+###What is the average daily activity pattern?
+
+```{r firstplot, warning=FALSE, message=FALSE}
+library(dplyr)
+library(ggplot2)
+
+up <- na.omit(read.csv('activity.csv'))
+
+up1 <- up %>% group_by(interval) %>% summarise(Avg=round(mean(steps),2))
+
+up2 <- up %>% group_by(interval) %>% summarise(Sum=sum(steps)) %>% filter(Sum==max(Sum))
+
+inter <- up2$interval
+
+suma <- up2$Sum
+
+pl <- plot(up1$interval, up1$Avg, type = 'l', xlab = '5-minute intervwal', ylab = 'Avg. of steps')
+
+```
+
+The maximum number of steps we can wind in `r inter` interval and its equal to `r suma` steps. 
+
+
+###Imputing missing values
+```{r secondplt, warning=FALSE, message=FALSE}
+library(dplyr)
+library(ggplot2)
+library(knitr)
+
+up <- read.csv('activity.csv')
+up2 <-na.omit(read.csv('activity.csv'))
+
+countna <- up %>% select(steps) %>% filter(is.na(steps))
+
+dataset <- up %>% select(steps, date, interval) %>% filter(!is.na(steps)) %>% group_by(interval) %>% summarise(Avg=round(mean(steps),2))
+
+nareplacement <- up %>% select(steps, date, interval) %>% filter(is.na(steps))
+
+nareplacement <- left_join(nareplacement, dataset, by = "interval") %>% select(Avg, date, interval) 
+
+nareplacement <- rename(nareplacement, steps = Avg)
+
+nareplacement <- rbind(up2,nareplacement)
+
+pl <- ggplot(up, aes(x=nareplacement$date, y=nareplacement$steps)) + geom_bar(stat = 'identity') + 
+  theme(axis.text.x=element_text(angle=90, hjust=1)) + ylab('Sum of steps taken') + xlab('Date')
+
+datatotable <- nareplacement %>% group_by(date) %>% summarise(Avg=round(mean(steps),2), Median=round(median(steps),2))
+
+kable(datatotable, format = "html")
+
+print(pl)
+```
+
+ - We can see that days with NA results from the previous graph now have results. These results are averages of each interval.  
+
+
+
+###Imputing missing values
+
+```{r thirdplot, warning=FALSE, message=FALSE}
+library(dplyr)
+library(ggplot2)
+library(knitr)
+
+up <- read.csv('activity.csv')
+up2 <-na.omit(read.csv('activity.csv'))
+
+countna <- up %>% select(steps) %>% filter(is.na(steps))
+
+dataset <- up %>% select(steps, date, interval) %>% filter(!is.na(steps)) %>% group_by(interval) %>% summarise(Avg=round(mean(steps),2))
+
+nareplacement <- up %>% select(steps, date, interval) %>% filter(is.na(steps))
+
+nareplacement <- left_join(nareplacement, dataset, by = "interval") %>% select(Avg, date, interval) 
+
+nareplacement <- rename(nareplacement, steps = Avg)
+
+narep <- rbind(up2,nareplacement)
+
+narep <- narep %>% mutate(weekday=weekdays(as.Date(date))) %>% 
+  mutate(split=ifelse(weekday=='Sunday' | weekday=='Saturday','Weekend','Workday'))
+
+narep <- narep %>% select(steps, interval, split) %>% group_by(interval, split) %>% summarise(Avg=round(mean(steps),2))
+
+pl <- ggplot(narep, aes(x=interval, y=Avg)) + geom_line() + facet_grid(split~.) + theme_bw()  
+
+print(pl)
+
+```
